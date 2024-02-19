@@ -1,0 +1,25 @@
+[package]
+name = "rust_art"
+version = "0.1.0"
+authors = ["James Lee <jbit@jbit.net>"]
+edition = "2021"
+license = "BSD-2-Clause"
+description = "Simple nannou project for Rust Melbourne Feb 2024"
+publish = false
+
+[badges]
+maintenance = { status = "experimental" }
+
+[dependencies]
+nannou = "0.19.0"
+
+# Unoptimized code is very slow for graphics, and big debug data slows down linking.
+# Build times based on optimization level and debug info.
+#   -O0 full    =   30s clean, 4s incremental
+#   -O1 full    = 1m15s clean, 2s incremental
+#   -O2 full    = 1m25s clean, 2s incremental
+#   -O2 limited = 1m05s clean, 1s incremental
+# So -O2 with limited debug info seems to be a good balance
+[profile.dev]
+opt-level = 2
+debug = "limited"
