@@ -7,6 +7,7 @@
 //! This code is based on https://github.com/nannou-org/nannou/blob/master/examples/draw/draw_polyline.rs
 
 // Include the "prelude" from Nannou (standard set of functions and types)
+use nannou::noise::*;
 use nannou::prelude::*;
 
 /// `main` is the default entry point for Rust programs
@@ -22,6 +23,8 @@ fn main() {
 /// `frame` is where well finally send our drawing to, which Nannou will display on screen
 ///     https://docs.rs/nannou/latest/nannou/frame/struct.Frame.html
 fn view_update(app: &nannou::App, frame: nannou::Frame) {
+    let noise = nannou::noise::HybridMulti::new();
+
     // Get the rectangle (size) of the window
     let win = app.window_rect();
 
@@ -37,39 +40,53 @@ fn view_update(app: &nannou::App, frame: nannou::Frame) {
     // How many sine wave cycles to show
     const HZ: f32 = 1.0;
 
-    // Create an array with 500 2D points (`Vec2`s) which will define our line
-    let mut points = [Vec2::ZERO; 500];
-    let first_index = 0;
-    let last_index = points.len() - 1;
-
-    // Iterate through all the points in the above array, with the index number
-    for (index, point_ref) in points.iter_mut().enumerate() {
+    const LINES: usize = 20;
+    for line_number in 0..LINES {
         // `map_range`: Maps a value from an input range to an output range
 
-        // Calculate the `x` position from the index
-        // first point in array = -1.0 = left of line
-        // last  point in array =  1.0 = right of line
-        let x = map_range(index, first_index, last_index, -1.0, 1.0);
+        // Height of each line, should be bigger than the distance between each line, to get some overlap
+        let line_height = 0.3;
 
-        // Calculate the `y` position
-        let y = (time + x * HZ * PI).sin();
+        // Start drawing lines at top of screen (y=1.0) and  work our way down
+        let line_position = map_range(line_number, 0, LINES, 1.0, -1.0);
 
-        // Convert the above normalized (-1.0 -> 0.0) coordinates to window coordinates
-        //     https://guide.nannou.cc/tutorials/basics/window-coordinates
-        let window_x = map_range(x, -1.0, 1.0, win.left(), win.right());
-        let window_y = map_range(y, -1.0, 1.0, win.bottom(), win.top());
+        // Create an array with 500 2D points (`Vec2`s) which will define a single line in our art
+        let mut points = [Vec2::ZERO; 500];
+        let first_index = 0;
+        let last_index = points.len() - 1;
 
-        *point_ref = pt2(window_x, window_y);
+        // Iterate through all the points in the above array, with the index number
+        for (index, point_ref) in points.iter_mut().enumerate() {
+            // Calculate the `x` position from the index
+            // first point in array = -1.0 = left of line
+            // last  point in array =  1.0 = right of line
+            let x = map_range(index, first_index, last_index, -1.0, 1.0);
+
+            // Calculate the `y` position
+            let y_noise = noise.get([(x + time) as f64, line_position as f64]) as f32;
+            let y = (x * HZ * PI).sin() * y_noise;
+            let y = y.clamp(0.0, 1.0) * line_height + line_position;
+
+            // Convert the above normalized (-1.0 -> 0.0) coordinates to window coordinates
+            //     https://guide.nannou.cc/tutorials/basics/window-coordinates
+            let window_x = map_range(x, -1.0, 1.0, win.left(), win.right());
+            let window_y = map_range(y, -1.0, 1.0, win.bottom(), win.top());
+
+            *point_ref = pt2(window_x, window_y);
+        }
+
+        // Fill with black to obscure lines behind this one
+        draw.polygon().color(BLACK).points(points);
+
+        // Draw white outline
+        draw.path()
+            .stroke()
+            .color(WHITE)
+            .stroke_weight(2.0)
+            .join_round()
+            .caps_round()
+            .points(points);
     }
-
-    // Draw a stroked path of our points (like a paint brush)
-    draw.path()
-        .stroke()
-        .color(RED)
-        .stroke_weight(8.0)
-        .join_round()
-        .caps_round()
-        .points(points);
 
     // Finish drawing to the frame that Nannou provided
     draw.to_frame(app, &frame).unwrap();
