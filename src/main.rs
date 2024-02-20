@@ -17,7 +17,8 @@ use nannou::winit::event::DeviceId;
 
 
 struct Model {
-    heihgt: f32,
+    height: f32,
+    speed: f32,
     prev_pressure: f32,
     prev_stage: f32,
 }
@@ -39,15 +40,23 @@ fn event(_app: &App, _model: &mut Model, event: Event) {
         WindowEvent { simple: Some(window_event), .. } => {
             match window_event {
                 TouchPressure(pressure) => {
-                    println!("Touchpad pressure: {:?}", pressure);
 
-                    if _model.prev_stage != pressure.stage as f32 {
-                        _model.prev_pressure = pressure.pressure;
+                    let mut pres = pressure.pressure;
+                    if _model.prev_stage < pressure.stage as f32 {
+                        pres = pres + 1.0;
                     }
 
-                    let norm_pressure =  f32::max(pressure.pressure, 0.1);
-                    let actual_pressure = norm_pressure * (pressure.stage as f32 + 1.0);
-                    _model.heihgt = f32::max(actual_pressure/2.0, 0.1);
+                    let mut norm_pressure =  f32::max(pres, 0.1) + pressure.stage as f32 - 1.0 ;
+
+                    println!("Touchpad pressure: {:?}, {:?}", pressure, norm_pressure);
+
+
+                    // if pressure.pressure < 0.0000020000 {
+                    //     norm_pressure = _model.prev_pressure;
+                    // }
+
+                    // let actual_pressure = norm_pressure * (pressure.stage as f32 + 1.0);
+                    _model.height = f32::max(norm_pressure, 0.050000024);
 
                     _model.prev_pressure = pressure.pressure;
                     _model.prev_stage = pressure.stage as f32;
@@ -61,7 +70,8 @@ fn event(_app: &App, _model: &mut Model, event: Event) {
 
 fn model(_app: &App) -> Model {
     Model {
-        heihgt: 0.0,
+        height: 0.0,
+        speed: 0.0,
         prev_pressure: 0.0,
         prev_stage: 0.0,
     }
@@ -90,12 +100,12 @@ fn view(_app: &App, _model: &Model, _frame: Frame) {
     // How many sine wave cycles to show
     const HZ: f32 = 1.0;
 
-    const LINES: usize = 20;
+    const LINES: usize = 13;
     for line_number in 0..LINES {
         // `map_range`: Maps a value from an input range to an output range
 
         // Height of each line, should be bigger than the distance between each line, to get some overlap
-        let line_height = _model.heihgt;
+        let line_height = _model.height;
 
         // Start drawing lines at top of screen (y=1.0) and  work our way down
         let line_position = map_range(line_number, 0, LINES, 1.0, -1.0);
