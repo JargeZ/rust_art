@@ -6,15 +6,65 @@
 //!
 //! This code is based on https://github.com/nannou-org/nannou/blob/master/examples/draw/draw_polyline.rs
 
+use std::cmp::max;
 // Include the "prelude" from Nannou (standard set of functions and types)
 use nannou::noise::*;
 use nannou::prelude::*;
+use nannou::event::Event::*;
+use nannou::event::TouchpadPressure;
+use nannou::Event::WindowEvent;
+use nannou::winit::event::DeviceId;
+
+
+struct Model {
+    heihgt: f32,
+    prev_pressure: f32,
+    prev_stage: f32,
+}
+
 
 /// `main` is the default entry point for Rust programs
 fn main() {
     // Create a simple app and tells Nannou to call the `view_update` function
     //     https://docs.rs/nannou/latest/nannou/fn.sketch.html
-    nannou::sketch(view_update).run()
+    nannou::app(model)
+        .event(event)
+        .simple_window(view)
+        .run();
+
+}
+
+fn event(_app: &App, _model: &mut Model, event: Event) {
+    match event {
+        WindowEvent { simple: Some(window_event), .. } => {
+            match window_event {
+                TouchPressure(pressure) => {
+                    println!("Touchpad pressure: {:?}", pressure);
+
+                    if _model.prev_stage != pressure.stage as f32 {
+                        _model.prev_pressure = pressure.pressure;
+                    }
+
+                    let norm_pressure =  f32::max(pressure.pressure, 0.1);
+                    let actual_pressure = norm_pressure * (pressure.stage as f32 + 1.0);
+                    _model.heihgt = f32::max(actual_pressure/2.0, 0.1);
+
+                    _model.prev_pressure = pressure.pressure;
+                    _model.prev_stage = pressure.stage as f32;
+                }
+                _ => (),
+            }
+        }
+        _ => (),
+    }
+}
+
+fn model(_app: &App) -> Model {
+    Model {
+        heihgt: 0.0,
+        prev_pressure: 0.0,
+        prev_stage: 0.0,
+    }
 }
 
 /// `view_update` is called periodically by Nannou to update the drawing
@@ -22,17 +72,17 @@ fn main() {
 ///     https://docs.rs/nannou/latest/nannou/app/struct.App.html
 /// `frame` is where well finally send our drawing to, which Nannou will display on screen
 ///     https://docs.rs/nannou/latest/nannou/frame/struct.Frame.html
-fn view_update(app: &nannou::App, frame: nannou::Frame) {
+fn view(_app: &App, _model: &Model, _frame: Frame) {
     let noise = nannou::noise::HybridMulti::new();
 
     // Get the rectangle (size) of the window
-    let win = app.window_rect();
+    let win = _app.window_rect();
 
     // Get the number of seconds (with fractions) since the app started
-    let time = app.time;
+    let time = _app.time;
 
     // Get an object from nannou that let's us easily draw shapes
-    let draw = app.draw();
+    let draw = _app.draw();
 
     // Set the background to black
     draw.background().color(BLACK);
@@ -45,7 +95,7 @@ fn view_update(app: &nannou::App, frame: nannou::Frame) {
         // `map_range`: Maps a value from an input range to an output range
 
         // Height of each line, should be bigger than the distance between each line, to get some overlap
-        let line_height = 0.3;
+        let line_height = _model.heihgt;
 
         // Start drawing lines at top of screen (y=1.0) and  work our way down
         let line_position = map_range(line_number, 0, LINES, 1.0, -1.0);
@@ -89,5 +139,5 @@ fn view_update(app: &nannou::App, frame: nannou::Frame) {
     }
 
     // Finish drawing to the frame that Nannou provided
-    draw.to_frame(app, &frame).unwrap();
+    draw.to_frame(_app, &_frame).unwrap();
 }
